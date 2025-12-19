@@ -50,7 +50,7 @@
         }
 
         /* Mensaje */
-        #greeting {
+        /* #greeting {
             position: fixed;
             inset: 0;
             z-index: 3;
@@ -60,13 +60,32 @@
             text-align: center;
             color: #0b1b33;
             transition: opacity .8s ease;
+        } */
+
+        #greeting {
+            position: fixed; inset: 0; z-index: 3;
+            display: grid; place-items: center;
+            padding: 24px; text-align: center;
+            transition: opacity 1.5s ease;
         }
 
         body.scene-dark #greeting {
             color: #fff;
         }
 
-        #card {
+        @keyframes cardEnter {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* #card {
             max-width: 820px;
             width: min(820px, 92vw);
             border-radius: 18px;
@@ -75,6 +94,48 @@
             border: 1px solid rgba(255, 255, 255, .25);
             backdrop-filter: blur(8px);
             box-shadow: 0 14px 40px rgba(0, 0, 0, .18);
+            animation: cardEnter 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        } */
+
+        #card {
+            max-width: 820px;
+            width: min(820px, 92vw);
+            border-radius: 20px;
+            padding: 40px 30px;
+            background: rgba(11, 30, 70, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            
+            /* Texto siempre blanco para contraste */
+            color: #ffffff; 
+            
+            /* Animación de entrada que hicimos antes */
+            animation: cardEnter 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+
+        .card-img {
+            display: block;
+            margin: 0 auto 10px auto;
+            max-width: 300px; /* Un poquito más grande */
+            width: 100%;
+            height: auto;
+            /* Un filtro sutil para asegurar que el logo destaque si tiene fondo */
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+            padding: 10px;
+        }
+
+        /* Clase para la animación de salida */
+        .card-exit {
+            opacity: 0 !important;
+            /* Se vuelve invisible */
+            transform: scale(0.9) translateY(-20px) !important;
+            /* Se hace pequeña y sube un poco */
+            transition: opacity 1.5s ease, transform 1.5s ease;
+            /* Dura 1.5 segundos */
+            pointer-events: none;
+            /* Evita que le den clic mientras desaparece */
         }
 
         body.scene-dark #card {
@@ -84,14 +145,20 @@
         }
 
         #greeting h1 {
-            margin: 0 0 10px;
+            margin: 10px 0 20px;
             font-size: clamp(28px, 4vw, 44px);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3); /* Sombra al texto */
+            font-weight: 700;
+            letter-spacing: -0.02em;
         }
 
         #greeting p {
-            margin: 0 0 14px;
-            font-size: clamp(15px, 1.6vw, 18px);
-            line-height: 1.45;
+            margin: 0 auto 25px; /* Centrado y margen abajo */
+            max-width: 600px;    /* Evita que las líneas de texto sean eternas */
+            font-size: clamp(16px, 1.8vw, 19px);
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9); /* Blanco un pelín suave para no cansar la vista */
+            font-weight: 400;
         }
 
         #btnStart {
@@ -409,7 +476,7 @@
         }
 
         .loading-init {
-        display: none !important;
+            display: none !important;
         }
     </style>
 
@@ -425,10 +492,12 @@
 
     <div id="greeting">
         <div id="card">
+            <img src="./img/logo-vertical-blanco.png" alt="Logo SE" class="card-img" />
             <h1>❄️ ¡Felices Fiestas! 🎄</h1>
             <p>
-                La Dirección de Tecnologías de la Información de la Secretaría de Economía les desea paz y tranquilidad 
-                en estas fechas y en compañía de sus familias, deseando el mejor de los éxitos para todos sus proyectos en este 2026.
+                La Dirección de Tecnologías de la Información de la Secretaría de Economía les desea paz y tranquilidad
+                en estas fechas y en compañía de sus familias, deseando el mejor de los éxitos para todos sus proyectos
+                en este 2026.
             </p>
             <button id="btnStart">Iniciar 🎆</button>
             <div id="hint">Tip: el sonido requiere interacción; actívalo con el botón 🔊 del show.</div>
@@ -749,7 +818,7 @@
             state: {
                 // will be unpaused in init()
                 paused: true,
-                soundEnabled: false,
+                soundEnabled: true,
                 menuOpen: false,
                 openHelpTopic: null,
                 fullscreen: isFullscreen(),
@@ -2952,12 +3021,13 @@
     </script>
 
     <script>
+        const btnStart = document.getElementById('btnStart');
         const greeting = document.getElementById('greeting');
         const fireworksApp = document.getElementById('fireworksApp');
 
-        // Tiempos para la secuencia automática
-        const TIEMPO_LECTURA = 10000; // 4 segundos para leer el mensaje antes de que se vaya
-        const T_FADE = 1500;    // Tiempo que tarda en oscurecerse
+        // Tiempos sincronizados
+        const T_SNOW = 1000;      // Tiempo antes de empezar a oscurecer
+        const T_EXIT_ANIM = 1500; // Duración del desvanecimiento (debe coincidir con el CSS)
 
         let started = false;
 
@@ -2965,40 +3035,46 @@
             if (started) return;
             started = true;
 
-            // 1. Oscurecer el fondo
-            document.body.classList.add('scene-dark');
-
-            // 2. Desvanecer el mensaje suavemente
-            greeting.style.opacity = '0';
-
-            // Detener nieve nueva
-            if (window.hasOwnProperty('snowRunning')) {
-                window.snowRunning = false;
+            if (window.soundManager && window.soundManager.ctx) {
+                window.soundManager.ctx.resume().catch(err => {
+                    console.log("El audio requiere interacción explícita del usuario.");
+                });
             }
 
-            // 3. Quitar mensaje y lanzar fuegos
+            // 1. Feedback inmediato en el botón (si existe)
+            if (btnStart) {
+                btnStart.style.transform = "scale(0.95)";
+                btnStart.textContent = "Cargando...";
+            }
+
+            // 2. Esperar un momento (T_SNOW) y comenzar la transición
             setTimeout(() => {
-                greeting.style.display = 'none';
+                // A) Oscurecer fondo
+                document.body.classList.add('scene-dark');
+
+                // B) Activar la animación de salida de la tarjeta
+                greeting.classList.add('card-exit'); // <--- AQUÍ ESTÁ LA MAGIA
+
+                // C) Detener nieve nueva
+                if (window.hasOwnProperty('snowRunning')) window.snowRunning = false;
+            }, T_SNOW);
+
+            // 3. Cuando termine la animación visual, iniciar la app de fuegos
+            setTimeout(() => {
+                greeting.style.display = 'none'; // Ahora sí lo quitamos del todo
                 fireworksApp.classList.remove('hideApp');
 
                 if (typeof window.startFireworks === 'function') {
-                    // Intentamos iniciar. Si el navegador bloquea el audio, 
-                    // la animación correrá igual, pero sin sonido.
                     window.startFireworks();
                 }
-            }, T_FADE); // Esperamos a que termine de oscurecer
+            }, T_SNOW + T_EXIT_ANIM); // Esperamos a que termine la animación
         }
 
-        // --- AUTO INICIO ---
-        // Esperamos a que cargue todo el contenido
-        window.addEventListener('load', () => {
-            // Y damos unos segundos extra para leer el saludo
-            setTimeout(runShow, TIEMPO_LECTURA);
-        });
+        // Event listeners
+        if (btnStart) btnStart.addEventListener('click', runShow);
 
-        // OPCIONAL: Si hacen clic en cualquier lado antes de tiempo, inicia igual
-        document.body.addEventListener('click', runShow);
-
+        // Si usas auto-inicio, descomenta la siguiente línea:
+        window.addEventListener('load', () => setTimeout(runShow, 12000));
     </script>
 </body>
 
